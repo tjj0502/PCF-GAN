@@ -136,9 +136,9 @@ def init_weights(m):
 
 
 def get_experiment_dir(config):
-    exp_dir = './numerical_results/{dataset}/algo_{gan}_G_{generator}_D_{discriminator}_n_lag_{n_lags}_{seed}_comment_{comment}'.format(
+    exp_dir = './numerical_results/{dataset}/algo_{gan}_G_{generator}_D_{discriminator}_n_lag_{n_lags}_{seed}_comment_{comment}_{lie_group}'.format(
         dataset=config.dataset, gan=config.gan_algo, generator=config.generator,
-        discriminator=config.discriminator, n_lags=config.n_lags, seed=config.seed, comment=config.comment)
+        discriminator=config.discriminator, n_lags=config.n_lags, seed=config.seed, comment=config.comment, lie_group=config.lie_group)
     os.makedirs(exp_dir, exist_ok=True)
     if config.train and os.path.exists(exp_dir):
         print("WARNING! The model exists in directory and will be overwritten")
@@ -166,3 +166,20 @@ def load_config(file_dir: str):
     with open(file_dir) as file:
         config = ml_collections.ConfigDict(yaml.safe_load(file))
     return config
+
+
+def track_gradient_norms(model):
+    total_norm = 0
+    for p in model.parameters():
+        param_norm = p.grad.data.norm(2)
+        total_norm += param_norm.item() ** 2
+    total_norm = total_norm ** 0.5
+    return total_norm
+
+def track_norm(model):
+    total_norm = 0
+    for p in model.parameters():
+        param_norm = p.data.norm(2)
+        total_norm += param_norm.item() ** 2
+    total_norm = total_norm ** 0.5
+    return total_norm

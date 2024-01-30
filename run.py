@@ -6,7 +6,7 @@ from src.evaluations.evaluate import full_evaluation
 from src.utils import get_experiment_dir, save_obj, load_config
 import torch
 from torch import nn
-
+import matplotlib
 
 def main(config):
     """
@@ -19,6 +19,7 @@ def main(config):
         tuple: A tuple containing the discriminative score, predictive score, and signature MMD.
     """
     # print(config)
+    matplotlib.use('Agg')
     os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu_id
     print(os.environ["CUDA_VISIBLE_DEVICES"])
     print(config)
@@ -27,7 +28,7 @@ def main(config):
     else:
         config.update({"device": "cpu"}, allow_val_change=True)
     config.update({'pretrained':False},allow_val_change=True)
-    config.update({'train':False},allow_val_change=True)
+    # config.update({'train':False},allow_val_change=True)
     # torch.cuda.set_per_process_memory_fraction(0.5, 0)
     get_experiment_dir(config)
     from src.datasets.dataloader import get_dataset
@@ -177,7 +178,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     dataset = ["rough", "stock", "air_quality", "eeg"]
     algos = ["PCFGAN", "TimeGAN", "RCGAN", "COTGAN"]
-    config_dir = pt.join("configs/", args.gan_algo, args.dataset + ".yaml")
+    config_dir = pt.join("configs/", args.gan_algo, args.dataset + "_new.yaml")
     logging.basicConfig(
         filename="numerical_results/{}_result".format(args.dataset),
         filemode="a",
@@ -232,11 +233,11 @@ if __name__ == "__main__":
     else:
         logging.info("Running on {} with {}".format(args.dataset, args.gan_algo))
         main(load_config(config_dir))
-        if args.gan_algo in ["PCFGAN", "TimeGAN"]:
-            logging.info(
-                "Running reconstruction evaluation on {} with {}".format(
-                    args.dataset, args.gan_algo
-                )
-            )
-            config = load_config(config_dir)
-            evaluate_reconstruction(config)
+        # if args.gan_algo in ["PCFGAN", "TimeGAN"]:
+        #     logging.info(
+        #         "Running reconstruction evaluation on {} with {}".format(
+        #             args.dataset, args.gan_algo
+        #         )
+        #     )
+        #     config = load_config(config_dir)
+        #     evaluate_reconstruction(config)

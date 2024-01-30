@@ -153,3 +153,45 @@ class ResFNN(nn.Module):
             x = x.reshape(x.shape[0], -1)
         out = self.network(x)
         return out
+
+
+class TransformerGenerator(GeneratorBase):
+    def __init__(
+        self,
+        input_dim: int,
+        output_dim: int,
+        hidden_dim: int,
+        n_layers: int,
+        noise_scale=0.1,
+        BM=False,
+        activation=nn.Tanh(),
+    ):
+        super(TransformerGenerator, self).__init__(input_dim, output_dim)
+        # LSTM
+        self.transformer = nn.Transformer(
+            input_size=input_dim,
+            hidden_size=hidden_dim,
+            num_layers=n_layers,
+            batch_first=True,
+        )
+        self.rnn.apply(init_weights)
+        self.linear = nn.Linear(hidden_dim, output_dim, bias=False)
+        self.linear.apply(init_weights)
+
+        self.initial_nn = nn.Sequential(
+            ResFNN(input_dim, hidden_dim * n_layers, [hidden_dim, hidden_dim]),
+            nn.Tanh(),
+        )  # we use a simple residual network to learn the distribution at the initial time step.
+        self.initial_nn1 = nn.Sequential(
+            ResFNN(input_dim, hidden_dim * n_layers, [hidden_dim, hidden_dim]),
+            nn.Tanh(),
+        )
+        self.initial_nn.apply(init_weights)
+        self.initial_nn1.apply(init_weights)
+
+        self.BM = BM
+        if BM:
+            self.noise_scale = noise_scale
+        else:
+            self.noise_scale = 0.3
+        self.activation = activation

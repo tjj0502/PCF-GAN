@@ -43,6 +43,14 @@ class BaseTrainer:
         plt_sample = self.plot_sample
         plt_rec = self.plot_reconstructed_sample
 
+        # SigMMD
+        # sigmmd_test = self.test_metrics_test[0](x_fake)
+        sigmmd_test = 0
+        self.losses_history["SigMMD"].append(sigmmd_test)
+        # Marginal
+        marginal_test = self.test_metrics_test[1].compute(x_fake.detach().cpu()).detach().numpy()
+        self.losses_history["marginal_distribution"].append(marginal_test)
+
         plt_sample(x_real, x_fake[: config.batch_size], self.config, step)
 
         if self.config.gan_algo == "RPathChar_GAN":

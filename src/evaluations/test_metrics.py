@@ -362,34 +362,13 @@ class cross_correlation(Loss):
         return torch.abs(fake_corre - real_corre)
 
 
-def skew_torch(x, dim=(0, 1), dropdims=True):
-    x = x - x.mean(dim, keepdims=True)
-    x_3 = torch.pow(x, 3).mean(dim, keepdims=True)
-    x_std_3 = torch.pow(x.std(dim, unbiased=True, keepdims=True), 3)
-    skew = x_3 / x_std_3
-    if dropdims:
-        skew = skew[0, 0]
-    return skew
-
-
-def kurtosis_torch(x, dim=(0, 1), excess=True, dropdims=True):
-    x = x - x.mean(dim, keepdims=True)
-    x_4 = torch.pow(x, 4).mean(dim, keepdims=True)
-    x_var2 = torch.pow(torch.var(x, dim=dim, unbiased=False, keepdims=True), 2)
-    kurtosis = x_4 / x_var2
-    if excess:
-        kurtosis = kurtosis - 3
-    if dropdims:
-        kurtosis = kurtosis[0, 0]
-    return kurtosis
-
-
 def diff(x):
     return x[:, 1:] - x[:, :-1]
 
 
 test_metrics = {
     "Sig_mmd": partial(Sig_MMD_loss, name="Sig_mmd", depth=4),
+    'marginal_distribution': partial(HistoLoss, n_bins=50)
 }
 
 
@@ -402,5 +381,6 @@ def get_standard_test_metrics(x: torch.Tensor, **kwargs):
     """Initialise list of standard test metrics for evaluating the goodness of the generator."""
     test_metrics_list = [
         test_metrics["Sig_mmd"](x, depth=4),
+        test_metrics['marginal_distribution'](x)
     ]
     return test_metrics_list

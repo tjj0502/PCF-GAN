@@ -10,14 +10,14 @@ import seaborn as sns
 from src.evaluations.test_metrics import (
     cacf_torch,
     Sig_mmd,
-    kurtosis_torch,
-    skew_torch,
+    Sig_mmd_small,
     ccf_metric,
     acf_metric,
     HistoLoss
 )
 from matplotlib.ticker import MaxNLocator
 import numpy as np
+import pandas as pd
 import logging
 from src.utils import get_experiment_dir
 from sklearn.manifold import TSNE
@@ -542,8 +542,6 @@ def plot_summary(fake_dl, real_dl, config, max_lag=None):
                 (
                     r"%s" % (title,),
                     # t'abs_metric=%.2f' % abs_metric
-                    r"$s=%.2f$" % (skew_torch(x).item(),),
-                    r"$\kappa=%.2f$" % (kurtosis_torch(x).item(),),
                 )
             )
             props = dict(boxstyle="round", facecolor="wheat", alpha=0.5)
@@ -578,7 +576,7 @@ def plot_summary(fake_dl, real_dl, config, max_lag=None):
         fig.savefig(pt.join(config.exp_dir, "hists_marginals_dim{}.pdf".format(i)))
         plt.close()
     plot_samples(real_dl, fake_dl, config)
-    plot_tsne(real_dl,fake_dl,2000)
+    plot_tsne(real_dl,fake_dl,config,2000)
 
 
 def compute_predictive_score(
@@ -750,6 +748,7 @@ def full_evaluation(generator, real_train_dl, real_test_dl, config, **kwargs):
     ccf1=[]
     ccf5=[]
     m_scores = []
+    df_dict = {}
     if config.generator == "Conditional_LSTM":
         train_data, train_condition = loader_to_cond_tensor(real_train_dl)
         test_data, test_condition = loader_to_cond_tensor(real_test_dl)
@@ -853,7 +852,7 @@ def full_evaluation(generator, real_train_dl, real_test_dl, config, **kwargs):
         fake = torch.cat(
             [loader_to_tensor(fake_train_dl), loader_to_tensor(fake_test_dl)]
         )
-        '''
+
         d_score_mean, d_score_std = compute_discriminative_score(
             real_train_dl,
             real_test_dl,
@@ -880,46 +879,64 @@ def full_evaluation(generator, real_train_dl, real_test_dl, config, **kwargs):
         p_scores.append(p_score_mean)
 
 
-        sig_mmd = Sig_mmd(real, fake, depth=sig_depth)
+        # sig_mmd = Sig_mmd_small(real, fake, depth=sig_depth)
 
-        while sig_mmd.abs() > 1e3:
-            sig_mmd = Sig_mmd(real, fake, depth=sig_depth)
-        Sig_MMDs.append(sig_mmd)
-        '''
-        #acf_score1 = acf_metric(real,fake,1)
-        #acf_score5 = acf_metric(real,fake,5)
-        #ccf_score1 = ccf_metric(real,fake,0)
-        #ccf_score5 = ccf_metric(real,fake,5)
-        #acf1.append(acf_score1)
-        #acf5.append(acf_score5)
-        #ccf1.append(ccf_score1)
-        #ccf5.append(ccf_score5)
+        # while sig_mmd.abs() > 1e3:
+        #     sig_mmd = Sig_mmd_small(real, fake, depth=sig_depth)
+        # Sig_MMDs.append(sig_mmd)
+
+        acf_score1 = acf_metric(real,fake,1)
+        acf_score5 = acf_metric(real,fake,5)
+        ccf_score1 = ccf_metric(real,fake,0)
+        ccf_score5 = ccf_metric(real,fake,5)
+        acf1.append(acf_score1)
+        acf5.append(acf_score5)
+        ccf1.append(ccf_score1)
+        ccf5.append(ccf_score5)
         
-        #m_metric = HistoLoss(real)
-        #m_score = m_metric.compute(fake)
-        #m_scores.append(m_score.detach().numpy())
-
+        m_metric = HistoLoss(real)
+        m_score = m_metric.compute(fake)
+        m_scores.append(m_score.detach().numpy())
 
 
     # plot_samples(real, fake, config)
-    #d_mean, d_std = np.array(d_scores).mean(), np.array(d_scores).std()
-    #p_mean, p_std = np.array(p_scores).mean(), np.array(p_scores).std()
-    #sig_mmd_mean, sig_mmd_std = np.array(Sig_MMDs).mean(), np.array(Sig_MMDs).std()
-    #acf1_mean,acf1_std = np.array(acf1).mean(),np.array(acf1).std()
-    #acf5_mean,acf5_std = np.array(acf5).mean(),np.array(acf5).std()
-    #ccf1_mean,ccf1_std = np.array(ccf1).mean(),np.array(ccf1).std()
-    #m_mean,m_std = np.array(m_scores).mean(),np.array(m_scores).std()
-    #plot_summary(fake_test_dl, real_test_dl, config)
-    plot_tsne(real_test_dl,fake_test_dl,config=config)
-    #logging.info("Evaluation results on model:{} ".format(config.gan_algo))
-    #logging.info("m_score with mean: {},std: {}".format(m_mean, m_std))
-    #logging.info("discriminative score with mean:{},std: {}".format(d_mean, d_std))
-    #logging.info("predictive score with mean:{},std: {}".format(p_mean, p_std))
-    #logging.info("sig mmd with mean: {},std: {}".format(sig_mmd_mean, sig_mmd_std))
-    #logging.info("acf1 with mean: {},std: {}".format(acf1_mean, acf1_std))
-    #logging.info("acf5 with mean: {},std: {}".format(acf5_mean, acf5_std))
-    #logging.info("ccf0 with mean: {},std: {}".format(ccf1_mean, ccf1_std))
-    #logging.info("ccf5 with mean: {},std: {}".format(ccf5_mean, ccf5_std))
+    d_mean, d_std = np.array(d_scores).mean(), np.array(d_scores).std()
+    p_mean, p_std = np.array(p_scores).mean(), np.array(p_scores).std()
+    # sig_mmd_mean, sig_mmd_std = np.array(Sig_MMDs).mean(), np.array(Sig_MMDs).std()
+    acf1_mean,acf1_std = np.array(acf1).mean(),np.array(acf1).std()
+    acf5_mean,acf5_std = np.array(acf5).mean(),np.array(acf5).std()
+    ccf1_mean,ccf1_std = np.array(ccf1).mean(),np.array(ccf1).std()
+    m_mean,m_std = np.array(m_scores).mean(),np.array(m_scores).std()
+    plot_summary(fake_test_dl, real_test_dl, config)
+    # plot_tsne(real_test_dl,fake_test_dl,config=config)
+
+    df_dict['d_mean'] = d_mean
+    df_dict['d_std'] = d_std
+    df_dict['p_mean'] = p_mean
+    df_dict['p_std'] = p_std
+    df_dict['acf1_mean'] = acf1_mean
+    df_dict['acf1_std'] = acf1_std
+    df_dict['acf5_mean'] = acf5_mean
+    df_dict['acf5_std'] = acf5_std
+    df_dict['ccf1_mean'] = ccf1_mean
+    df_dict['ccf1_std'] = ccf1_std
+    df_dict['m_mean'] = m_mean
+    df_dict['m_std'] = m_std
+
+    print(df_dict)
+    df = pd.DataFrame([df_dict])
+
+    df.to_csv(config.exp_dir + '/final_results.csv', index=True)
+
+    logging.info("Evaluation results on model:{} ".format(config.gan_algo))
+    logging.info("m_score with mean: {},std: {}".format(m_mean, m_std))
+    logging.info("discriminative score with mean:{},std: {}".format(d_mean, d_std))
+    logging.info("predictive score with mean:{},std: {}".format(p_mean, p_std))
+    # logging.info("sig mmd with mean: {},std: {}".format(sig_mmd_mean, sig_mmd_std))
+    logging.info("acf1 with mean: {},std: {}".format(acf1_mean, acf1_std))
+    logging.info("acf5 with mean: {},std: {}".format(acf5_mean, acf5_std))
+    logging.info("ccf0 with mean: {},std: {}".format(ccf1_mean, ccf1_std))
+    # logging.info("ccf5 with mean: {},std: {}".format(ccf5_mean, ccf5_std))
     return None, None , None
 
 

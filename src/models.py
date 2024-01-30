@@ -27,7 +27,7 @@ def get_discriminator(discriminator_type, input_dim, **kwargs):
 
 def get_trainer(config, train_dl, test_dl):
     model_name = "%s" % (config.gan_algo)
-
+    print("Model name: ", model_name)
     x_real_train = loader_to_tensor(train_dl).to(config.device)
 
     x_real_test = loader_to_tensor(test_dl).to(config.device)
